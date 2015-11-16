@@ -1,3 +1,6 @@
+from decimal import *
+import math
+
 def StrToMathList(str):
     mathList = []
     str += "@"
@@ -13,8 +16,8 @@ def StrToMathList(str):
             mathList.append(symbol)
             value = ""
         elif symbol == "@":
-            mathList.append(value)
-
+            if value != "":
+                mathList.append(value)
     return mathList
 
 def MathListToPostfix(mathList):
@@ -32,22 +35,41 @@ def MathListToPostfix(mathList):
                     for pop in range(0, popOp):
                         ExprData.append(ExprOp.pop())
                     ExprOp.pop()
-            elif len(ExprOp) > 0 and prOp[item] < prOp[ExprOp[-1]]:
-                popOp = ExprOp[::-1].index("(")
+            elif len(ExprOp) > 0 and (
+                        prOp[item] < prOp[ExprOp[-1]] or 
+                        item in "-/" and prOp[item] == prOp[ExprOp[-1]]):
+                try:
+                    popOp = ExprOp[::-1].index("(")
+                except ValueError:
+                    popOp = len(ExprOp)
+                print popOp
                 for pop in range(0, popOp):
                     ExprData.append(ExprOp.pop())
             if item != ")":
                 ExprOp.append(item)
-
-    mathList = StrToMathList(mathData)
     return ExprData + ExprOp[::-1]
 
-mathData = "((1+2)*(3+4)*5+6)/7*(6+7)"
-mathList = StrToMathList(mathData)
-postfix = MathListToPostfix(mathList)
-
-print postfix
+def evalute(stack):
+    step = stack.pop()
+    if step in "+-*/":
+        var2 = evalute(stack)
+        var1 = evalute(stack)
+        if step == "+":
+            return var1 + var2
+        elif step == "-":
+            return var1 - var2
+        elif step == "*":
+            return var1 * var2
+        elif step == "/":
+            return var1 / var2
+        print step
+    else:
+        return Decimal(step)
         
+def calculate(mathData):
+    mathList = StrToMathList(mathData)
+    postfix = MathListToPostfix(mathList)
+    return evalute(postfix)
 
 
 
