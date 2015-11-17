@@ -6,8 +6,7 @@ from calc import *
 
 class CalculatorTestCase(unittest.TestCase):
 
-	# Positive Tests
-
+	### Positive Tests ###
 	def testSumSimpleInt(self):
 		self.assertEquals(calculate("45+78"), 123)
 
@@ -75,9 +74,28 @@ class CalculatorTestCase(unittest.TestCase):
 		self.assertEquals(calculate("25/5 + (4+8)/6 + (70/10-3)*5"), 27)
 
 	def testIntResult(self):
-		self.assertAlmostEquals(calculate("1.5/.5"), 3)
+		self.assertEquals(calculate("1.5/.5"), 3)
 
-	# Negative Tests
+	# Log(x,y) tests
+	def testLogInt(self):
+		self.assertEquals(calculate("log(8,2)"), 3)
+
+	def testLogFloat(self):
+		self.assertEquals(calculate("log(15.625,2.5)"), 3)
+
+	def testLogZero(self):
+		self.assertEquals(calculate("log(1,7)"), 0)
+
+	def testLogComplexAB(self):
+		self.assertEquals(calculate("log( (28+4)*2, 100/20 + 11)"), 1.5)
+
+	def testLogInExpr(self):
+		self.assertEquals(calculate("5/log(4,2)"), 2.5)
+
+	def testLogInLog(self):
+		self.assertEquals(calculate("log(log(log(256*256,2),2),2)"), 2)
+
+	### Negative Tests ###
 	def testDivZero(self):
 		self.assertEquals(calculate("1/0"), Err["ErrZeroDiv"])
 
@@ -109,7 +127,26 @@ class CalculatorTestCase(unittest.TestCase):
 		self.assertEquals(calculate("1.2.3 + 4"), Err["ErrNum"])
 
 	def testPointWithSpace(self):
-		self.assertEquals(calculate("1 . 4"), Err["ErrOps"])
+		self.assertEquals(calculate("1 . 4 + 1"), Err["ErrOps"])
 
-	# ((((1+2))))
-	# (1+(2+3+(3+4)))
+	# Log(a,b) tests
+	def testLogLimitBOne(self):
+		self.assertEquals(calculate("log(8,1)"), Err["ErrLog"])
+
+	def testLogLimitBGreatThan0(self):
+		self.assertEquals(calculate("log(6,-5)"), Err["ErrLog"])
+
+	def testLogLimitAGreatThan0(self):
+		self.assertEquals(calculate("log(-6,5)"), Err["ErrLog"])
+
+	def testLogMoreArgs(self):
+		self.assertEquals(calculate("log(6,2,5)"), Err["ErrOps"])
+
+	def testLogBracketSecondMiss(self):
+		self.assertEquals(calculate("log(6,5"), Err["ErrBracket"])
+
+	def testLogBracketFirstMiss(self):
+		self.assertEquals(calculate("log6,5)"), Err["ErrBracket"])
+
+	def testLogBadBrackets(self):
+		self.assertEquals(calculate("log((16,1)+1+2)"), Err["ErrOps"])

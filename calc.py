@@ -1,4 +1,4 @@
-from decimal import *
+from decimal import Decimal, getcontext
 import math
 
 getcontext().prec = 6
@@ -9,19 +9,42 @@ Err = {
     "ErrChar": "Sorry. I can't understand some characters :(",
     "ErrOps": "Sorry. I can't understand what you want exactly :(",
     "ErrNum": "Sorry. You give me very interesting numbers. I don't know how to identify them :(",
+    "ErrLog": "Ok, You have to use log(a,b) where a > 0 and b != 1 and b > 0",
 }
 
-def strToMathList(str):
+def checkLogRight(mathList):
+    posL = len(mathList) - 1
+    countBrck = 0
+    countLog = 0
+    countComma = 0
+    while ( posL >= 0 ):
+        if mathList[posL] == ",":
+            countComma += 1
+        elif mathList[posL] == "(":
+            countBrck += 1
+        elif mathList[posL] == ")":
+            countBrck -= 1
+        elif mathList[posL] == "log":
+            countLog += 1
+        posL -= 1
+    return countBrck - countLog < 1 and countLog - countComma > 0
+
+def strToMathList(mathStr):
     mathList = []
-    str += "@"
+    mathStr += "@"
     operations = "+-/*"
     brackets = "()"
     value = ""
     lastOpFlag = True
     floatFlag = False
+    func = "log"
+    posFunc = 0
 
-    for symbol in str:
-        if symbol.isdigit() or symbol == "-" and value == "" and ( len(mathList)==0 or len(mathList)>0 and mathList[-1] in "("):
+    for symbol in mathStr:
+
+        # print "check: " + symbol + " == " + func[posFunc] + ", posFunc: " + str(posFunc)
+
+        if symbol.isdigit() or symbol == "-" and value == "" and lastOpFlag:
             value += symbol
         elif symbol == ".":
             if not floatFlag:
@@ -40,6 +63,7 @@ def strToMathList(str):
                 floatFlag = False
                 value = ""
         elif symbol in brackets:
+
             if symbol == "(" and not lastOpFlag or symbol == "(" and value != "":
                 return Err["ErrOps"]
             if symbol == ")" and lastOpFlag and value == "":
@@ -57,13 +81,28 @@ def strToMathList(str):
                 floatFlag = False
             elif value != "" and not lastOpFlag:
                 return Err["ErrOps"]
-            else:
-                pass
         elif symbol == "@":
             if value != "" and lastOpFlag:
                 mathList.append(value)
             elif value == "":
                 pass
+            else:
+                return Err["ErrOps"]
+        elif symbol == func[posFunc]:
+            posFunc += 1
+            if posFunc == len(func):
+                mathList.append("log")
+                lastOpFlag = True
+                posFunc = 0
+        elif symbol == ",":
+            logFlag = checkLogRight(mathList)
+            if logFlag:
+                if value != "" and lastOpFlag:
+                    mathList.append(value)
+                    value = ""
+                lastOpFlag = True
+                floatFlag = False
+                mathList.append(symbol)
             else:
                 return Err["ErrOps"]
         else:
@@ -78,9 +117,6 @@ def strToMathList(str):
             brackets -= 1
         if brackets < 0:
             return Err["ErrBracket"]
-        # if item in not operations and lastElem in operations: #or item not in operations and lastElem not in operations:
-        # if item == "(" and lastElem != "@" and v:
-            return Err["ErrOps"]
         lastElem = item
     if brackets != 0:
         return Err["ErrBracket"]
@@ -90,10 +126,11 @@ def strToMathList(str):
 def mathListToPostfix(mathList):
     ExprData = []
     ExprOp = []
-    prOp = {"+": 0, "-": 0, "*": 1, "/": 1, "(": 0, ")": 1}
+    prOp = {"+": 0, "-": 0, "*": 1, "/": 1, "(": 0, ")": 1, ",": 0, "log": 1}
 
     for item in mathList:
         isDigit = False
+
         try:
             float(item)
             isDigit = True
@@ -104,11 +141,15 @@ def mathListToPostfix(mathList):
             ExprData.append(item)
         else: 
             if item in "()":
-                if item == ")":
+                if item in ")":
                     popOp = ExprOp[::-1].index("(")
                     for pop in range(0, popOp):
                         ExprData.append(ExprOp.pop())
                     ExprOp.pop()
+            elif item == ",":
+                popOp = ExprOp[::-1].index("(")
+                for pop in range(0, popOp):
+                    ExprData.append(ExprOp.pop())
             elif len(ExprOp) > 0 and (
                         prOp[item] < prOp[ExprOp[-1]] or 
                         item in "-/" and prOp[item] == prOp[ExprOp[-1]]):
@@ -118,7 +159,7 @@ def mathListToPostfix(mathList):
                     popOp = len(ExprOp)
                 for pop in range(0, popOp):
                     ExprData.append(ExprOp.pop())
-            if item != ")":
+            if item not in "),":
                 ExprOp.append(item)
     return ExprData + ExprOp[::-1]
 
@@ -132,21 +173,36 @@ def opMult(a, b):
     return Decimal(a) * Decimal(b)
 
 def opDiv(a, b):
-    if b != 0:
+    if b > 0 and b != 1 and a > 0:
         return Decimal(a) / Decimal(b)
     else:
         return Err["ErrZeroDiv"]
+
+def opLog(a, b):
+    if b != 1 and b > 0 and a > 0:
+        return math.log( a, b)
+    else:
+        return Err["ErrLog"]
 
 operations= {
     "+": opSum,
     "-": opSub,
     "*": opMult,
-    "/": opDiv
+    "/": opDiv,
+    "log": opLog
 }
 
 def evalute(stack):
     step = stack.pop()
     if step in "+-*/":
+        var2 = evalute(stack)
+        var1 = evalute(stack)
+        result = operations[step](var1, var2)
+        if result in Err.values():
+            return result
+        else:
+            return Decimal(result)
+    elif step == "log":
         var2 = evalute(stack)
         var1 = evalute(stack)
         result = operations[step](var1, var2)
